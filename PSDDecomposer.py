@@ -29,25 +29,33 @@ def to_mask(img):
     return mask
     
 
-def convert_psd(anime_folder):
+def convert_psd(psd_dir, output_dir, output_title):
     json_arr = []
-    for file in os.listdir('./' + anime_folder):
+    try:
+        os.mkdir(output_dir + output_title + '/')
+    except:
+        pass
+
+    for file in os.listdir('./' + psd_dir):
         if fnmatch.fnmatch(file, '*.psd'):
-            file_path = './' + anime_folder + '/' + file
-            folder_path = file_path[0:len(file_path) - 4]
-            print('converting : ', file_path)
-        
+            psdfile_path = psd_dir + file
+            title = file[0:len(file) - 4]
+            output_sub = output_title + '/' + title + '/'
+            print('converting : ', psdfile_path)
+            print('to : ', output_dir + output_sub)
+
             try:
-                os.mkdir(folder_path)
+                os.mkdir(output_dir + output_sub)
             except:
-                print('folder : ', folder_path, ' already exist')
+                pass
+
                 
             # json object to build
             json_obj = {}
-            json_obj['title'] = file[0:len(file) - 4]
+            json_obj['title'] = title
             json_obj['faces'] = {}
             
-            psd = PSDImage.open(file_path)
+            psd = PSDImage.open(psdfile_path)
             for layer in psd:
                 layer.visible = True
                 layer_img = layer.topil()
@@ -55,13 +63,13 @@ def convert_psd(anime_folder):
                 
                 if channel == 3:
                     # save background
-                    saving_path = folder_path + '/' + file[0:len(file) - 4] + '.png'
+                    saving_path = output_sub + 'background.png'
                     json_obj['background_path'] = saving_path
-                    layer_img.save(saving_path)
+                    layer_img.save(output_dir + saving_path)
                     
                 elif channel == 4:
                     # name for this layer
-                    saving_path = folder_path + '/' + layer.name
+                    saving_path = output_sub + layer.name
                     
                     # parse property of layer
                     properties = layer.name.split('_')
@@ -75,18 +83,19 @@ def convert_psd(anime_folder):
                         json_obj['faces'][properties[0]][properties[1]]['mask'] = saving_path + '_mask.png'
                         json_obj['faces'][properties[0]][properties[1]]['bbox'] = layer.bbox
                         
+                        layer_img.save(output_dir + saving_path + '.png')
                         mask_img = to_mask(layer_img)
-                        layer_img.save(saving_path + '.png')
-                        plt.imsave(saving_path + '_mask.png', mask_img, cmap='gray')
+                        plt.imsave(output_dir + saving_path + '_mask.png', mask_img, cmap='gray')
+
                     if len(properties) == 3:
                         json_obj['faces'][properties[0]][properties[1]]['kind'] = properties[2]
                         json_obj['faces'][properties[0]][properties[1]]['path'] = saving_path + '.png'
                         json_obj['faces'][properties[0]][properties[1]]['bbox'] = layer.bbox
-                        layer_img.save(saving_path + '.png')
+                        layer_img.save(output_dir + saving_path + '.png')
                         
                     
             json_arr.append(json_obj)
-    with open(anime_folder + '.json', 'w') as outfile:
+    with open(output_dir + output_title + '.json', 'w') as outfile:
         json.dump(json_arr, outfile, indent=4)
 
 
@@ -98,7 +107,9 @@ def validate_json(target_json):
     with open(target_json, 'rb') as infile:
         json_arr = json.load(infile)
     
-    emote_list = ['happy', 'sadness', 'neutral', 'fear', 'angry', 'contempt', 'disgust', 'surprise']
+    emote_list = ['happy', 'sadness', 'neutral', 'fear', 'angry', 
+        'contempt', 'happiness', 'disgust', 'surprise', 'anger', 'suprise', 'sad']
+    prop_list = ['hair', 'eyeL', 'eyeR', 'emote']
     valid = True
     for pic in json_arr:
         assert 'background_path' in pic
@@ -110,6 +121,7 @@ def validate_json(target_json):
             assert 'hair' in pic['faces'][face_key]
             
             for prop_key in pic['faces'][face_key]:
+                assert prop_key in prop_list
                 if prop_key != 'emote':
                     assert 'path' in pic['faces'][face_key][prop_key]
                     assert 'mask' in pic['faces'][face_key][prop_key]
