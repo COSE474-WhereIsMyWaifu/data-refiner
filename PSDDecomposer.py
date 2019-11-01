@@ -52,6 +52,7 @@ def convert_psd(psd_dir, output_dir, output_title):
                 
             # json object to build
             json_obj = {}
+            json_obj['segmented'] = False
             json_obj['title'] = title
             json_obj['faces'] = {}
             
@@ -82,6 +83,7 @@ def convert_psd(psd_dir, output_dir, output_title):
                         json_obj['faces'][properties[0]][properties[1]]['path'] = saving_path + '.png'
                         json_obj['faces'][properties[0]][properties[1]]['mask'] = saving_path + '_mask.png'
                         json_obj['faces'][properties[0]][properties[1]]['bbox'] = layer.bbox
+                        json_obj['segmented'] = True
                         
                         layer_img.save(output_dir + saving_path + '.png')
                         mask_img = to_mask(layer_img)
@@ -118,7 +120,6 @@ def validate_json(target_json):
         
         for face_key in pic['faces']:
             assert 'emote' in pic['faces'][face_key]
-            assert 'hair' in pic['faces'][face_key]
             
             for prop_key in pic['faces'][face_key]:
                 assert prop_key in prop_list
@@ -174,13 +175,13 @@ def show_emote(background_path, bbox, emote_path):
     plt.tight_layout()
     plt.show()
     
-def show_json(target_json):
+def show_json(target_json, image_dir):
     
     with open(target_json, 'rb') as infile:
         json_arr = json.load(infile)
         
     for pic in json_arr:
-        background_path = pic['background_path']
+        background_path = image_dir + pic['background_path']
         
         for face_key in pic['faces']:
             for prop_key in pic['faces'][face_key]:
@@ -188,14 +189,14 @@ def show_json(target_json):
                 print(pic['title'] + " " + face_key + " " + prop_key)
                 if prop_key != 'emote':
                     bbox = pic['faces'][face_key][prop_key]['bbox']
-                    original_path = pic['faces'][face_key][prop_key]['path']
-                    mask_path = pic['faces'][face_key][prop_key]['mask']
+                    original_path = image_dir + pic['faces'][face_key][prop_key]['path']
+                    mask_path = image_dir + pic['faces'][face_key][prop_key]['mask']
                     show_imgmask(background_path, bbox, original_path, mask_path)
                 elif prop_key == 'emote':
                     print('emote = ' + pic['faces'][face_key][prop_key]['kind'])
                     
                     bbox = pic['faces'][face_key][prop_key]['bbox']
-                    original_path = pic['faces'][face_key][prop_key]['path']
+                    original_path = image_dir + pic['faces'][face_key][prop_key]['path']
                     show_emote(background_path, bbox, original_path)
                 
             
