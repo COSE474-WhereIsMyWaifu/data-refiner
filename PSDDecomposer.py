@@ -60,26 +60,26 @@ def convert_psd(psd_dir, output_dir, output_title):
             for layer in psd:
                 layer.visible = True
                 layer_img = layer.topil()
-                channel = len(layer_img.getbands())
                 
-                if channel == 3:
+                properties = layer.name.split('_')
+
+                if len(properties) == 1:
                     # save background
                     saving_path = output_sub + 'background.png'
                     json_obj['background_path'] = saving_path
                     layer_img.save(output_dir + saving_path)
                     
-                elif channel == 4:
+                else:
                     # name for this layer
-                    saving_path = output_sub + layer.name
                     
                     # parse property of layer
-                    properties = layer.name.split('_')
                     if properties[0] not in json_obj['faces']:
                         json_obj['faces'][properties[0]] = {}
                     json_obj['faces'][properties[0]][properties[1]] = {}
                     
                     # save and build json
                     if len(properties) == 2:
+                        saving_path = output_sub + layer.name
                         json_obj['faces'][properties[0]][properties[1]]['path'] = saving_path + '.png'
                         json_obj['faces'][properties[0]][properties[1]]['mask'] = saving_path + '_mask.png'
                         json_obj['faces'][properties[0]][properties[1]]['bbox'] = layer.bbox
@@ -90,6 +90,7 @@ def convert_psd(psd_dir, output_dir, output_title):
                         plt.imsave(output_dir + saving_path + '_mask.png', mask_img, cmap='gray')
 
                     if len(properties) == 3:
+                        saving_path = output_sub + properties[0] + '_' + properties[1]
                         json_obj['faces'][properties[0]][properties[1]]['kind'] = properties[2]
                         json_obj['faces'][properties[0]][properties[1]]['path'] = saving_path + '.png'
                         json_obj['faces'][properties[0]][properties[1]]['bbox'] = layer.bbox
@@ -110,7 +111,7 @@ def validate_json(target_json):
         json_arr = json.load(infile)
     
     emote_list = ['happy', 'sadness', 'neutral', 'fear', 'angry', 
-        'contempt', 'happiness', 'disgust', 'surprise', 'anger', 'suprise', 'sad']
+        'contempt', 'happiness', 'disgust', 'surprise', 'anger', 'suprise', 'sad', 'ashamed', 'fearness']
     prop_list = ['hair', 'eyeL', 'eyeR', 'emote']
     valid = True
     for pic in json_arr:
@@ -129,7 +130,7 @@ def validate_json(target_json):
                     assert 'bbox' in pic['faces'][face_key][prop_key]
                 elif prop_key == 'emote':
                     assert 'path' in pic['faces'][face_key][prop_key]
-                    assert 'kind' in pic['faces'][face_key][prop_key]
+                    #assert 'kind' in pic['faces'][face_key][prop_key]
                     assert 'bbox' in pic['faces'][face_key][prop_key]
                     assert pic['faces'][face_key][prop_key]['kind'] in emote_list
                     
@@ -175,7 +176,7 @@ def show_emote(background_path, bbox, emote_path):
     plt.tight_layout()
     plt.show()
     
-def show_json(target_json, image_dir):
+def show_json(target_json, image_dir, plot_emote = True, plot_segment = True):
     
     with open(target_json, 'rb') as infile:
         json_arr = json.load(infile)
@@ -187,17 +188,30 @@ def show_json(target_json, image_dir):
             for prop_key in pic['faces'][face_key]:
                 print('------------------------------------------------------------------------------')
                 print(pic['title'] + " " + face_key + " " + prop_key)
-                if prop_key != 'emote':
+                if prop_key != 'emote' and plot_segment is True:
                     bbox = pic['faces'][face_key][prop_key]['bbox']
                     original_path = image_dir + pic['faces'][face_key][prop_key]['path']
                     mask_path = image_dir + pic['faces'][face_key][prop_key]['mask']
                     show_imgmask(background_path, bbox, original_path, mask_path)
-                elif prop_key == 'emote':
+                elif prop_key == 'emote' and plot_emote is True:
                     print('emote = ' + pic['faces'][face_key][prop_key]['kind'])
                     
                     bbox = pic['faces'][face_key][prop_key]['bbox']
                     original_path = image_dir + pic['faces'][face_key][prop_key]['path']
                     show_emote(background_path, bbox, original_path)
-                
-            
+       
+    
+import sys
+if __name__ == "__main__":
+    if len(sys.argv) <= 1:
+        print('more parameters needed\n')
+    else:
+        title = str(sys.argv[1])
+
+        target = '../data/orig/' + title + '/'
+        output_dir = '../data/refined/'
+        output_title = title
+    
+        convert_psd(target, output_dir, output_title)
+        validate_json(output_dir + title + '.json')
     
