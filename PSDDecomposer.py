@@ -105,36 +105,96 @@ def convert_psd(psd_dir, output_dir, output_title):
 
 # In[3]:
 
-
-def validate_json(target_json):
-    with open(target_json, 'rb') as infile:
-        json_arr = json.load(infile)
+def is_valid_emote(emote):
+    emote_list = ['happy', 'sadness', 'neutral', 'fear', 'angry',
+                  'contempt', 'happiness', 'disgust', 'surprise', 'anger', 
+                  'suprise', 'sad', 'ashamed', 'fearness', 'neutral', 
+                  'unavailable', 'small', 'shame']
     
-    emote_list = ['happy', 'sadness', 'neutral', 'fear', 'angry', 
-        'contempt', 'happiness', 'disgust', 'surprise', 'anger', 'suprise', 'sad', 'ashamed', 'fearness']
+    emotes = emote.split(',')
+    
+    for e in emotes:
+        split_e = e.split('|')
+        
+        if len(split_e) == 1:
+            if split_e[0] not in emote_list:
+                return False
+        elif len(split_e) == 2:
+            if split_e[0] not in emote_list:
+                return False
+            try:
+                float(split_e[1])
+            except ValueError:
+                return False
+        else:
+            return False
+
+    return True
+
+def validate_json(json_file_name):
+    with open(json_file_name, 'rb') as in_file:
+        json_arr = json.load(in_file)
+    
     prop_list = ['hair', 'eyeL', 'eyeR', 'emote']
+    
     valid = True
     for pic in json_arr:
-        assert 'background_path' in pic
-        assert 'faces' in pic
-        assert 'title' in pic
-        
+        if 'title' not in pic:
+            print('pic with no title on \'' + json_file_name + '\'')
+            continue
+        if 'background_path' not in pic:
+            print(str(pic['title'])  + ' : key \'background_path\' not found')
+            continue
+        if 'faces' not in pic:
+            print(str(pic['title'])  + ' : key \'faces\' not found')
+            continue
+            
+        if len(pic['faces']) == 0:
+            print(str(pic['title'])  + ' : no items in key \'faces\'')
+            continue
+            
         for face_key in pic['faces']:
-            assert 'emote' in pic['faces'][face_key]
+            if 'emote' not in pic['faces'][face_key]:
+                print(str(pic['title']) + ' : ' + str(face_key) + ' : key \'emote\' not found')
+                continue
             
             for prop_key in pic['faces'][face_key]:
-                assert prop_key in prop_list
-                if prop_key != 'emote':
-                    assert 'path' in pic['faces'][face_key][prop_key]
-                    assert 'mask' in pic['faces'][face_key][prop_key]
-                    assert 'bbox' in pic['faces'][face_key][prop_key]
-                elif prop_key == 'emote':
-                    assert 'path' in pic['faces'][face_key][prop_key]
-                    #assert 'kind' in pic['faces'][face_key][prop_key]
-                    assert 'bbox' in pic['faces'][face_key][prop_key]
-                    assert pic['faces'][face_key][prop_key]['kind'] in emote_list
+                if prop_key not in prop_list:
+                    print(str(pic['title']) + ' : ' + str(face_key) + ' : \'' + str(prop_key) + '\' is not a valid property key')
+                    continue
                     
-        print(pic['title'], ' is valid')
+                if prop_key != 'emote':
+                    if 'path' not in pic['faces'][face_key][prop_key]:
+                        print(str(pic['title']) + ' : ' + str(face_key) + 
+                              ' : ' + str(prop_key) + ' : no items in key \'path\'')
+                        continue
+                    if 'mask' not in pic['faces'][face_key][prop_key]:
+                        print(str(pic['title']) + ' : ' + str(face_key) + 
+                              ' : ' + str(prop_key) + ' : no items in key \'mask\'')
+                        continue
+                    if 'bbox' not in pic['faces'][face_key][prop_key]:
+                        print(str(pic['title']) + ' : ' + str(face_key) + 
+                              ' : ' + str(prop_key) + ' : no items in key \'bbox\'')
+                        continue
+                elif prop_key == 'emote':
+                    if 'path' not in pic['faces'][face_key][prop_key]:
+                        print(str(pic['title']) + ' : ' + str(face_key) + 
+                              ' : ' + str(prop_key) + ' : no items in key \'path\'')
+                        continue
+                    if 'kind' not in pic['faces'][face_key][prop_key]:
+                        print(str(pic['title']) + ' : ' + str(face_key) + 
+                              ' : ' + str(prop_key) + ' : no items in key \'kind\'')
+                        continue
+                    if 'bbox' not in pic['faces'][face_key][prop_key]:
+                        print(str(pic['title']) + ' : ' + str(face_key) + 
+                              ' : ' + str(prop_key) + ' : no items in key \'bbox\'')
+                        continue
+                        
+                    if is_valid_emote(pic['faces'][face_key][prop_key]['kind']) is False:
+                        print(str(pic['title']) + ' : ' + str(face_key) + 
+                              ' : ' + str(prop_key) + ' : \'' + str(pic['faces'][face_key][prop_key]['kind']) + 
+                              '\' is not a valid property key')
+                        continue
                     
     return valid
     
@@ -206,12 +266,15 @@ if __name__ == "__main__":
     if len(sys.argv) <= 1:
         print('more parameters needed\n')
     else:
-        title = str(sys.argv[1])
-
-        target = '../data/orig/' + title + '/'
-        output_dir = '../data/refined/'
-        output_title = title
+        input_dir = str(sys.argv[1])
+        
+        title_list = os.listdir(input_dir)
+        
+        for title in title_list:
+            target = '../data/orig/' + title + '/'
+            output_dir = '../data/refined/'
+            output_title = title
     
-        convert_psd(target, output_dir, output_title)
-        validate_json(output_dir + title + '.json')
+            convert_psd(target, output_dir, output_title)
+            validate_json(output_dir + title + '.json')
     
